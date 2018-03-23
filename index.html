@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+	  <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+    <script src="world.json"></script>
+    <script src="meteorites.geojson"></script>
+    <title>Mapping with D3 - Meteorite Sightings</title>
+    <style>
+    /* Align the body at the center so that svg container is held neatly in place */
+      body {
+        margin:0;
+        position:fixed;
+        top:0;
+        right:0;
+        bottom:0;
+        left:0;
+      }
+
+      /* Align svg to the center for ease of interaction and better visibility*/
+      svg {
+        margin-left:auto;
+        margin-right:auto;
+        display:block;
+      }
+
+      /* Create rule to align headings and text to the center */
+      .halign {
+        text-align: center;
+      }
+
+      /*  Position headers away from the svg so the tooltip is displayed correctly */
+      h3 {
+        position:absolute;
+        top:200px;
+        left: 10px;
+        font-size: 2em;
+        font-weight:100;
+      }
+
+      h4 {
+        position:absolute;
+        top:250px;
+        left: 10px;
+        font-size: 2em;
+        font-weight:100;
+      }
+
+      /* Style to show point in a different color upon hovering */
+      .hover {
+          fill: green;
+          stroke: black;
+      }
+      /* Position Slider element  */
+      #sliderContainer {
+        text-align: center;
+        position: relative;
+        /* top: 700px; */
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <h1 class="halign" style="color: #d11245">Meteorite Sightings</h1>
+    <h3></h3>
+    <h4></h4>
+    <h2 class="halign">Select sighting type</h2>
+    <div id="sliderContainer">
+    <input id="typeslide" type="range" min="0" max="1" value="0" step="1"/><br>
+    <span id="range">Fell</span>
+    </div>
+    <script>
+
+    var width = 1500;
+    var height = 1000;
+
+    // Specify inputValue for sighting type
+    var inputValue = null;
+    // Specify sighting type values to select using slider
+    var sight = ["Fell", "Found"]
+
+    //  Create svg container with zooming ability
+    var svg = d3.select("body")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .call(d3.zoom().on("zoom", function () {
+          svg.attr("transform", d3.event.transform)
+        }))
+        .append("g");
+
+    var g = svg.append( "g" );
+
+    // Define projection - here we use Mercator
+    var projection = d3.geoMercator().scale(150).translate([width/2,height/2])
+    // Define path variable for drawing the map using the above projection
+    var path = d3.geoPath().projection(projection);
+    // Define point variable for plotting data points on the map
+    var point = d3.geoPath().projection(projection).pointRadius(2);
+
+    // Draw the world map
+    g.selectAll("path")
+      .data(world_json.features)
+      .enter()
+      .append("path")
+      .attr( "fill", "#ccc" )
+      .attr( "stroke", "#333")
+      .attr( "d", path );
+
+    // Define meteorites variable for meteorite sighting data
+    var meteorites = svg.append("g")
+    // Plot the points on the map using the meteorites data
+      meteorites.selectAll("path")
+        .data(meteorites_json.features)
+        .enter()
+        .append( "path" )
+        .attr( "d", point )
+        .attr("fill", initialState)
+        .attr("stroke", '#ccc')
+        .attr('class', 'meteor')
+        // Provide tooltip to display Name and Mass of each meteorite upon hovering
+        .on("mouseover", function(d) {
+          d3.select("h3").text('Name: ' + d.properties.name);
+          d3.select("h4").text('Mass: ' + d.properties.mass);
+          d3.select(this).attr('class', 'hover');
+        })
+        // Revert upon moving mouse away
+        .on("mouseout", function(d) {
+          d3.select("h3").text("");
+          d3.select("h4").text("");
+          d3.select(this).attr("class", "meteor");
+        });
+
+    // when the input range changes update the value
+    d3.select("#typeslide").on("input", function() {
+        update(+this.value);
+    });
+
+    // update the fill of each SVG of class "meteor" with value
+    function update(value) {
+        document.getElementById("range").innerHTML=sight[value];
+        inputValue = sight[value];
+        d3.selectAll(".meteor")
+            .attr("fill", typeMatch);
+    }
+    // Match the slider input against sighting type from 'fall' attribute in data
+    function typeMatch(data, value) {
+        var t = data.properties.fall;
+        if (inputValue == t) {
+            this.parentElement.appendChild(this);
+            return "red";
+        } else {
+            return "#999";
+        };
+    }
+    // Define initial state and initial color
+    function initialState(d, i){
+      var t = d.properties.fall;
+      if (t=="Fell") {
+          this.parentElement.appendChild(this);
+          return 'red';
+      } else {
+          return '#999';
+      };
+    }
+
+    </script>
+    </body>
+</html>
